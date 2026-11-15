@@ -20,8 +20,14 @@ async function parseJson<T>(res: Response): Promise<T> {
   return data as T;
 }
 
+const API_BASE =
+  typeof import.meta !== 'undefined' &&
+  typeof import.meta.env?.VITE_API_BASE_URL === 'string'
+    ? import.meta.env.VITE_API_BASE_URL.replace(/\/$/, '')
+    : '';
+
 export async function fetchPublicPortfolio(): Promise<PublicPortfolioData> {
-  const res = await fetch('/api/public/portfolio', {
+  const res = await fetch(`${API_BASE}/api/public/portfolio`, {
     method: 'GET',
     headers: { Accept: 'application/json' },
   });
@@ -33,14 +39,121 @@ export async function submitContactForm(payload: {
   email: string;
   subject: string;
   message: string;
-  website: string;
-}): Promise<{ ok: boolean }> {
-  const res = await fetch('/api/public/contact', {
+  hp_company_ref?: string;
+  recipientEmail?: string;
+  contactEndpoint?: string;
+}): Promise<{ ok: boolean; notice?: string }> {
+  const {
+    name,
+    email,
+    subject,
+    message,
+    hp_company_ref = '',
+    recipientEmail = '',
+    contactEndpoint = '',
+  } = payload;
+
+  // 1. Try primary full-stack backend API when available
+  let backendUnavailable = false;
+  try {
+    const res = await fetch(`${API_BASE}/api/public/contact`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Accept: 'application/json',
+      },
+      body: JSON.stringify({ name, email, subject, message, hp_company_ref }),
+    });
+
+    const contentType = res.headers.get('content-type') || '';
+    if (res.ok && contentType.includes('application/json')) {
+      return parseJson<{ ok: boolean }>(res);
+    }
+
+    // 404/405 or HTML response indicates static hosting (e.g. GitHub Pages) with no Node backend
+    if (res.status === 404 || res.status === 405 || !contentType.includes('application/json')) {
+      backendUnavailable = true;
+    } else {
+      return parseJson<{ ok: boolean }>(res);
+    }
+  } catch {
+    backendUnavailable = true;
+  }
+
+  if (!backendUnavailable) {
+    throw new Error('Unable to send message right now.');
+  }
+
+  // 2. Fallback to configured external endpoint (e.g. Formspree, Web3Forms, n8n webhook)
+  const envEndpoint =
+    typeof import.meta !== 'undefined' &&
+    typeof import.meta.env?.VITE_CONTACT_ENDPOINT === 'string'
+      ? import.meta.env.VITE_CONTACT_ENDPOINT.trim()
+      : '';
+  const externalUrl = (contactEndpoint || envEndpoint).trim();
+  if (externalUrl) {
+    const extRes = await fetch(externalUrl, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Accept: 'application/json',
+      },
+      body: JSON.stringify({ name, email, subject, message }),
+    });
+    if (!extRes.ok) {
+      throw new Error('External contact endpoint rejected the submission.');
+    }
+    return { ok: true };
+  }
+
+  // 3. Zero-backend email relay fallback via FormSubmit AJAX for static hosts like GitHub Pages
+  const targetEmail = recipientEmail.trim();
+  if (!targetEmail) {
+    throw new Error('No recipient email or backend endpoint configured.');
+  }
+
+  const fsRes = await fetch(`https://formsubmit.co/ajax/${encodeURIComponent(targetEmail)}`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(payload),
+    headers: {
+      'Content-Type': 'application/json',
+      Accept: 'application/json',
+    },
+    body: JSON.stringify({
+      name,
+      email,
+      _replyto: email,
+      _subject: `Portfolio Inquiry: ${subject}`,
+      subject,
+      message,
+      _captcha: 'false',
+      _template: 'table',
+    }),
   });
-  return parseJson<{ ok: boolean }>(res);
+
+  const fsData = (await fsRes.json().catch(() => ({}))) as {
+    success?: string | boolean;
+    message?: string;
+  };
+
+  if (fsRes.ok && (fsData.success === true || fsData.success === 'true')) {
+    return { ok: true };
+  }
+
+  if (
+    typeof fsData.message === 'string' &&
+    fsData.message.toLowerCase().includes('activation')
+  ) {
+    return {
+      ok: true,
+      notice: `A one-time activation email was just sent to ${targetEmail}. Open that email and click "Activate Form" once so future messages deliver automatically.`,
+    };
+  }
+
+  throw new Error(
+    typeof fsData.message === 'string' && fsData.message
+      ? fsData.message
+      : 'Static host could not relay the message automatically. Please use the direct email link below.',
+  );
 }
 
 export interface AdminSessionStatus {

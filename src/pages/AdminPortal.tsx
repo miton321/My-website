@@ -2002,6 +2002,24 @@ export default function AdminPortal() {
                     </Field>
                   </div>
 
+                  <Field label="Optional External Contact Endpoint / Webhook URL (e.g. Formspree, Web3Forms, or n8n Webhook)">
+                    <input
+                      type="text"
+                      value={settingsDraft.contactEndpoint || ''}
+                      onChange={(e) => {
+                        setSettingsDraft({ ...settingsDraft, contactEndpoint: e.target.value });
+                        markDirty('contact');
+                      }}
+                      placeholder="https://formspree.io/f/... or https://your-n8n-webhook..."
+                      className={inputClass}
+                    />
+                    <p className="mt-1.5 text-xs text-(--text-muted)">
+                      When hosted on a Node server, messages save to your Admin Inbox and optionally
+                      forward to this URL. On static hosts like GitHub Pages, messages use this
+                      endpoint or fall back to email relay ({settingsDraft.contactEmail}).
+                    </p>
+                  </Field>
+
                   <div className="border-t border-(--border-hairline) pt-6">
                     <div className="flex items-center justify-between">
                       <h3 className="font-display text-lg font-semibold">Social & Profile Links</h3>

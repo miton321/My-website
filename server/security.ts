@@ -151,11 +151,12 @@ export function sanitizeUrl(input: string): string {
 }
 
 export const contactSubmissionSchema = z.object({
-  name: z.string().min(2, 'Name is required').max(120),
-  email: z.string().email('Valid email is required').max(180),
-  subject: z.string().min(2, 'Subject is required').max(180),
-  message: z.string().min(10, 'Message must be at least 10 characters').max(4000),
+  name: z.string().trim().min(2, 'Name is required').max(120),
+  email: z.string().trim().email('Valid email is required').max(180),
+  subject: z.string().trim().min(2, 'Subject is required').max(180),
+  message: z.string().trim().min(3, 'Message must be at least 3 characters').max(4000),
   website: z.string().max(200).optional().default(''),
+  hp_company_ref: z.string().max(200).optional().default(''),
 });
 
 export const loginSchema = z.object({
@@ -185,6 +186,7 @@ export const siteSettingsSchema = z.object({
   strengths: z.array(z.string().min(1).max(120)).max(24),
   contactEmail: z.string().email().max(180),
   contactLocation: z.string().min(2).max(120),
+  contactEndpoint: z.string().max(500).optional().default(''),
   socialLinks: z
     .array(
       z.object({

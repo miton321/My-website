@@ -102,20 +102,63 @@ export function createApiRouter() {
     }
 
     // Hidden honeypot field: bots fill this; silently succeed without storing
-    if (parsed.data.website && parsed.data.website.trim().length > 0) {
+    const honeypotVal = (parsed.data.hp_company_ref || parsed.data.website || '').trim();
+    if (honeypotVal.length > 0) {
       return res.status(200).json({ ok: true });
     }
 
     contactLimiter.hit(`contact:${ip}`);
 
+    const cleanName = sanitizePlainText(parsed.data.name);
+    const cleanEmail = sanitizePlainText(parsed.data.email);
+    const cleanSubject = sanitizePlainText(parsed.data.subject);
+    const cleanMessage = sanitizePlainText(parsed.data.message);
+
     try {
       createContactMessage({
-        name: sanitizePlainText(parsed.data.name),
-        email: sanitizePlainText(parsed.data.email),
-        subject: sanitizePlainText(parsed.data.subject),
-        message: sanitizePlainText(parsed.data.message),
+        name: cleanName,
+        email: cleanEmail,
+        subject: cleanSubject,
+        message: cleanMessage,
         ipHash: hashString(ip),
       });
+
+      // Optionally forward to external webhook/form endpoint if configured by admin
+      const settings = getSiteSettings();
+      const webhookUrl = sanitizeUrl(settings.contactEndpoint || '');
+      if (webhookUrl && webhookUrl.startsWith('https://')) {
+        try {
+          const parsedUrl = new URL(webhookUrl);
+          const host = parsedUrl.hostname.toLowerCase();
+          const isPrivate =
+            host === 'localhost' ||
+            host === '127.0.0.1' ||
+            host === '::1' ||
+            host.startsWith('10.') ||
+            host.startsWith('192.168.') ||
+            host.startsWith('169.254.') ||
+            /^172\.(1[6-9]|2\d|3[01])\./.test(host);
+          if (!isPrivate) {
+            fetch(webhookUrl, {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                Accept: 'application/json',
+              },
+              body: JSON.stringify({
+                name: cleanName,
+                email: cleanEmail,
+                subject: cleanSubject,
+                message: cleanMessage,
+              }),
+              signal: AbortSignal.timeout(5000),
+            }).catch(() => {});
+          }
+        } catch {
+          // ignore malformed webhook URL
+        }
+      }
+
       return res.status(201).json({ ok: true });
     } catch {
       return res.status(500).json({ error: 'Unable to save your message right now.' });
@@ -261,6 +304,7 @@ export function createApiRouter() {
       strengths: d.strengths.map(sanitizePlainText).filter(Boolean),
       contactEmail: sanitizePlainText(d.contactEmail),
       contactLocation: sanitizePlainText(d.contactLocation),
+      contactEndpoint: sanitizeUrl(d.contactEndpoint),
       socialLinks: d.socialLinks
         .map((s) => ({
           id: sanitizePlainText(s.id),

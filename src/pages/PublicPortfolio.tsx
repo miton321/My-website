@@ -40,6 +40,7 @@ const FALLBACK_PORTFOLIO: PublicPortfolioData = {
     ],
     contactEmail: 'musaddikrahman0192@gmail.com',
     contactLocation: 'Gaibandha, Bangladesh',
+    contactEndpoint: '',
     socialLinks: [],
     footerTagline:
       'Designing intelligent automation workflows, AI agents, and reliable API integrations.',
@@ -196,7 +197,7 @@ export default function PublicPortfolio() {
     email: '',
     subject: '',
     message: '',
-    website: '',
+    hp_company_ref: '',
   });
   const [submitting, setSubmitting] = useState(false);
   const [submitFeedback, setSubmitFeedback] = useState<{
@@ -379,21 +380,29 @@ export default function PublicPortfolio() {
       setSubmitFeedback({ type: 'error', text: 'Please provide a subject.' });
       return;
     }
-    if (message.length < 10) {
+    if (message.length < 3) {
       setSubmitFeedback({
         type: 'error',
-        text: 'Please write a message of at least 10 characters.',
+        text: 'Please write a message of at least 3 characters.',
       });
       return;
     }
 
     setSubmitting(true);
     try {
-      await submitContactForm({ name, email, subject, message, website: formState.website });
-      setFormState({ name: '', email: '', subject: '', message: '', website: '' });
+      const result = await submitContactForm({
+        name,
+        email,
+        subject,
+        message,
+        hp_company_ref: formState.hp_company_ref,
+        recipientEmail: settings.contactEmail,
+        contactEndpoint: settings.contactEndpoint,
+      });
+      setFormState({ name: '', email: '', subject: '', message: '', hp_company_ref: '' });
       setSubmitFeedback({
         type: 'success',
-        text: 'Thank you. Your message has been delivered and saved.',
+        text: result.notice || 'Thank you. Your message has been delivered.',
       });
     } catch (err) {
       setSubmitFeedback({
@@ -966,17 +975,22 @@ export default function PublicPortfolio() {
                   noValidate
                   className="border border-(--border-hairline) bg-(--bg-canvas) p-6 sm:p-8"
                 >
-                  {/* Hidden honeypot field for bot mitigation */}
-                  <div className="sr-only" aria-hidden="true">
-                    <label htmlFor="contact-website">Website</label>
+                  {/* Hidden honeypot field for bot mitigation (autofill-safe name) */}
+                  <div
+                    style={{ position: 'absolute', left: '-9999px', width: '1px', height: '1px', overflow: 'hidden' }}
+                    aria-hidden="true"
+                  >
+                    <label htmlFor="contact-hp-ref">Company Reference</label>
                     <input
-                      id="contact-website"
-                      name="website"
+                      id="contact-hp-ref"
+                      name="hp_company_ref"
                       type="text"
                       tabIndex={-1}
-                      autoComplete="off"
-                      value={formState.website}
-                      onChange={(e) => setFormState((s) => ({ ...s, website: e.target.value }))}
+                      autoComplete="new-password"
+                      data-lpignore="true"
+                      data-1p-ignore="true"
+                      value={formState.hp_company_ref}
+                      onChange={(e) => setFormState((s) => ({ ...s, hp_company_ref: e.target.value }))}
                     />
                   </div>
 
@@ -1059,7 +1073,24 @@ export default function PublicPortfolio() {
                       ) : (
                         <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
                       )}
-                      <span>{submitFeedback.text}</span>
+                      <div className="space-y-1.5">
+                        <p>{submitFeedback.text}</p>
+                        {submitFeedback.type === 'error' && settings.contactEmail && (
+                          <p>
+                            <a
+                              href={`mailto:${encodeURIComponent(settings.contactEmail)}?subject=${encodeURIComponent(
+                                formState.subject.trim() || 'Portfolio Inquiry',
+                              )}&body=${encodeURIComponent(
+                                `${formState.message.trim()}\n\nFrom: ${formState.name.trim()} (${formState.email.trim()})`,
+                              )}`}
+                              className="inline-flex items-center gap-1 text-xs font-medium underline underline-offset-4"
+                            >
+                              <span>Send directly to {settings.contactEmail}</span>
+                              <ArrowUpRight className="h-3 w-3" />
+                            </a>
+                          </p>
+                        )}
+                      </div>
                     </div>
                   )}
 

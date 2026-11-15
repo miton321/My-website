@@ -20,6 +20,7 @@ export interface SiteSettings {
   strengths: string[];
   contactEmail: string;
   contactLocation: string;
+  contactEndpoint?: string;
   socialLinks: SocialLink[];
   footerTagline: string;
   footerCopyright: string;

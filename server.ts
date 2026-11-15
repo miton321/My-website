@@ -32,7 +32,9 @@ async function startServer() {
           fontSrc: ["'self'", 'https://fonts.gstatic.com', 'data:'],
           imgSrc: ["'self'", 'data:', 'blob:'],
           mediaSrc: ["'self'", 'blob:', 'data:'],
-          connectSrc: isProduction ? ["'self'"] : ["'self'", 'ws:', 'wss:'],
+          connectSrc: isProduction
+            ? ["'self'", 'https://formsubmit.co']
+            : ["'self'", 'ws:', 'wss:', 'https://formsubmit.co'],
           frameAncestors: [
             "'self'",
             'https://aistudio.google.com',
@@ -49,9 +51,10 @@ async function startServer() {
     }),
   );
 
-  // Strict CORS (allow only configured APP_URL or same-origin)
+  // Strict CORS for admin routes; allow public portfolio/contact API from static frontends (e.g. GitHub Pages)
   app.use((req, res, next) => {
     const origin = req.headers.origin;
+    const isPublicApi = req.path.startsWith('/api/public/');
     const appUrl = process.env.APP_URL?.trim();
     if (origin) {
       const requestHostOrigin = `${req.protocol}://${req.get('host')}`;
@@ -69,6 +72,10 @@ async function startServer() {
         res.setHeader('Access-Control-Allow-Credentials', 'true');
         res.setHeader('Access-Control-Allow-Methods', 'GET,POST,PUT,PATCH,DELETE,OPTIONS');
         res.setHeader('Access-Control-Allow-Headers', 'Content-Type,X-CSRF-Token');
+      } else if (isPublicApi) {
+        res.setHeader('Access-Control-Allow-Origin', '*');
+        res.setHeader('Access-Control-Allow-Methods', 'GET,POST,OPTIONS');
+        res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
       }
     }
     if (req.method === 'OPTIONS') {

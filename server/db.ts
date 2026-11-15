@@ -125,6 +125,7 @@ export const DEFAULT_SITE_SETTINGS: SiteSettings = {
   ],
   contactEmail: 'musaddikrahman0192@gmail.com',
   contactLocation: 'Gaibandha, Bangladesh',
+  contactEndpoint: '',
   socialLinks: [],
   footerTagline:
     'Designing intelligent automation workflows, AI agents, and reliable API integrations.',
