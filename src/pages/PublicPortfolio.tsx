@@ -219,15 +219,33 @@ export default function PublicPortfolio() {
     window.localStorage.setItem('mrm-theme', theme);
   }, [theme]);
 
-  // Fetch published portfolio data from backend
+  // Fetch published portfolio data from backend (gracefully keep fallback on static hosts)
   useEffect(() => {
     let active = true;
     fetchPublicPortfolio()
       .then((res) => {
-        if (active) setData(res);
+        if (
+          active &&
+          res &&
+          typeof res === 'object' &&
+          res.settings &&
+          typeof res.settings.heroName === 'string' &&
+          Array.isArray(res.expertise) &&
+          Array.isArray(res.projects) &&
+          Array.isArray(res.experience) &&
+          Array.isArray(res.education)
+        ) {
+          setData({
+            settings: { ...FALLBACK_PORTFOLIO.settings, ...res.settings },
+            expertise: res.expertise,
+            projects: res.projects,
+            experience: res.experience,
+            education: res.education,
+          });
+        }
       })
       .catch(() => {
-        // Retain initial structured content if network fails transiently
+        // Retain initial structured content if network/API is unavailable (e.g. static hosting)
       });
     return () => {
       active = false;
@@ -388,6 +406,10 @@ export default function PublicPortfolio() {
   };
 
   const { settings, expertise, projects, experience, education } = data;
+  const adminHref =
+    typeof window !== 'undefined' && window.location.hostname.endsWith('.github.io')
+      ? '#/portal-x7k2'
+      : '/portal-x7k2';
   const navItems = [
     { id: 'home', label: 'Home' },
     { id: 'about', label: 'About' },
@@ -447,7 +469,7 @@ export default function PublicPortfolio() {
           {/* Zone 3: Header actions (+ mobile menu button on small screens) */}
           <div className="flex items-center gap-2.5 shrink-0">
             <a
-              href="/portal-x7k2"
+              href={adminHref}
               rel="nofollow"
               className="hidden sm:inline-flex items-center border border-(--border-hairline) px-3.5 py-2 text-xs font-medium text-(--text-ink) whitespace-nowrap shrink-0 transition-colors hover:border-(--accent) hover:text-(--accent)"
             >
@@ -492,7 +514,7 @@ export default function PublicPortfolio() {
                 </a>
               ))}
               <a
-                href="/portal-x7k2"
+                href={adminHref}
                 rel="nofollow"
                 className="mt-1 border-t border-(--border-hairline) pt-3 text-sm font-medium text-(--accent)"
               >

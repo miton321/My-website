@@ -146,6 +146,9 @@ async function startServer() {
     app.use(vite.middlewares);
   } else {
     const distDir = path.resolve(process.cwd(), 'dist');
+    app.get('/portal-x7k2/', (_req, res) => {
+      res.redirect(301, '/portal-x7k2');
+    });
     app.use(express.static(distDir));
     app.get('*', (_req, res) => {
       const indexPath = path.join(distDir, 'index.html');

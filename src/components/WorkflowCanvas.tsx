@@ -113,10 +113,15 @@ export function WorkflowCanvas({
     container.appendChild(renderer.domElement);
 
     const scene = new THREE.Scene();
-    const pmremGenerator = new THREE.PMREMGenerator(renderer);
-    const envTex = pmremGenerator.fromScene(new RoomEnvironment(), 0.04).texture;
-    scene.environment = envTex;
-    pmremGenerator.dispose();
+    let envTex: THREE.Texture | null = null;
+    try {
+      const pmremGenerator = new THREE.PMREMGenerator(renderer);
+      envTex = pmremGenerator.fromScene(new RoomEnvironment(), 0.04).texture;
+      scene.environment = envTex;
+      pmremGenerator.dispose();
+    } catch {
+      envTex = null;
+    }
 
     const initialBg = themeRef.current === 'dark' ? 0x0b0b0d : 0xf8f8f6;
     scene.fog = new THREE.FogExp2(initialBg, 0.032);
@@ -488,7 +493,7 @@ export function WorkflowCanvas({
       accentMat.dispose();
       conduitMat.dispose();
       pulseMat.dispose();
-      envTex.dispose();
+      envTex?.dispose();
       edges.forEach((e) => e.tube.geometry.dispose());
       renderer.dispose();
       if (renderer.domElement.parentNode === container) {
