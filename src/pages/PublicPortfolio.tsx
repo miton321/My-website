@@ -183,10 +183,14 @@ export default function PublicPortfolio() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [failedImages, setFailedImages] = useState<Record<number, boolean>>({});
   const [theme, setTheme] = useState<'light' | 'dark'>(() => {
-    if (typeof window !== 'undefined') {
-      const saved = window.localStorage.getItem('mrm-theme');
-      if (saved === 'dark' || saved === 'light') return saved;
-      if (window.matchMedia('(prefers-color-scheme: dark)').matches) return 'dark';
+    try {
+      if (typeof window !== 'undefined') {
+        const saved = window.localStorage.getItem('mrm-theme');
+        if (saved === 'dark' || saved === 'light') return saved;
+        if (window.matchMedia?.('(prefers-color-scheme: dark)').matches) return 'dark';
+      }
+    } catch {
+      // ignore storage/media query access errors in restricted contexts
     }
     return 'light';
   });
@@ -217,7 +221,11 @@ export default function PublicPortfolio() {
     } else {
       root.classList.remove('dark');
     }
-    window.localStorage.setItem('mrm-theme', theme);
+    try {
+      window.localStorage.setItem('mrm-theme', theme);
+    } catch {
+      // ignore storage errors
+    }
   }, [theme]);
 
   // Fetch published portfolio data from backend (gracefully keep fallback on static hosts)

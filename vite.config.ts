@@ -4,8 +4,10 @@ import path from 'path';
 import {defineConfig} from 'vite';
 
 export default defineConfig(({ command }) => {
+  const envBase = process.env.VITE_BASE_PATH?.trim();
+  const buildBase = envBase ? `${envBase.replace(/\/+$/, '')}/` || '/' : './';
   return {
-    base: command === 'build' ? './' : '/',
+    base: command === 'build' ? buildBase : '/',
     plugins: [react(), tailwindcss()],
     resolve: {
       alias: {

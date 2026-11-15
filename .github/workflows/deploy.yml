@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - main
+      - master
   workflow_dispatch:
 
 permissions:
@@ -27,6 +28,10 @@ jobs:
         with:
           node-version: 22
 
+      - name: Setup Pages
+        id: pages
+        uses: actions/configure-pages@v5
+
       - name: Install dependencies
         run: |
           if [ -f package-lock.json ]; then
@@ -36,10 +41,14 @@ jobs:
           fi
 
       - name: Build production bundle
+        env:
+          VITE_BASE_PATH: ${{ steps.pages.outputs.base_path }}/
         run: npm run build
 
-      - name: Setup Pages
-        uses: actions/configure-pages@v5
+      - name: Prepare static SPA fallback and .nojekyll
+        run: |
+          cp dist/index.html dist/404.html
+          touch dist/.nojekyll
 
       - name: Upload Pages artifact
         uses: actions/upload-pages-artifact@v3
