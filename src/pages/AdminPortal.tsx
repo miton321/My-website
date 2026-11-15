@@ -694,7 +694,12 @@ export default function AdminPortal() {
               <button
                 key={tab.id}
                 type="button"
-                onClick={() => setActiveTab(tab.id)}
+                onClick={() => {
+                  setActiveTab(tab.id);
+                  if (tab.id === 'inbox') {
+                    loadDashboard(true);
+                  }
+                }}
                 className={`flex items-center justify-between px-3.5 py-2.5 text-left text-sm whitespace-nowrap shrink-0 transition-colors ${
                   active
                     ? 'bg-(--bg-canvas) font-medium text-(--text-ink)'
@@ -829,7 +834,19 @@ export default function AdminPortal() {
 
                   {filteredMessages.length === 0 ? (
                     <div className="mt-8 border border-(--border-hairline) p-10 text-center text-sm text-(--text-muted)">
-                      No contact messages match your filter.
+                      {dashboard.messages.length === 0 ? (
+                        <div className="space-y-2">
+                          <p>No messages in this server&apos;s inbox yet.</p>
+                          <p className="text-xs">
+                            If visitors submit messages on a static GitHub Pages build without{' '}
+                            <code className="font-mono-tabular">VITE_API_BASE_URL</code> set to
+                            this server, those submissions are delivered via email rather than this
+                            database.
+                          </p>
+                        </div>
+                      ) : (
+                        'No contact messages match your filter.'
+                      )}
                     </div>
                   ) : (
                     <div className="mt-6 divide-y divide-(--border-hairline) border border-(--border-hairline)">

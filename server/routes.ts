@@ -71,6 +71,7 @@ export function createApiRouter() {
 
   // PUBLIC READ-ONLY ENDPOINT (published content only, zero secrets or messages)
   router.get('/public/portfolio', (_req: Request, res: Response) => {
+    res.setHeader('Cache-Control', 'no-store');
     try {
       res.json({
         settings: getSiteSettings(),
@@ -99,12 +100,6 @@ export function createApiRouter() {
       return res.status(400).json({
         error: parsed.error.issues[0]?.message || 'Please check your input fields.',
       });
-    }
-
-    // Hidden honeypot field: bots fill this; silently succeed without storing
-    const honeypotVal = (parsed.data.hp_company_ref || parsed.data.website || '').trim();
-    if (honeypotVal.length > 0) {
-      return res.status(200).json({ ok: true });
     }
 
     contactLimiter.hit(`contact:${ip}`);
@@ -167,6 +162,7 @@ export function createApiRouter() {
 
   // ADMIN AUTHENTICATION
   router.get('/admin/session', (req: AdminRequest, res: Response) => {
+    res.setHeader('Cache-Control', 'no-store');
     const configured = ensureAdminSeededFromEnv() || Boolean(getAnyAdmin());
     const rawToken = readSessionCookie(req);
     if (!rawToken) {
@@ -263,6 +259,7 @@ export function createApiRouter() {
 
   // PROTECTED ADMIN DATA ROUTES
   router.get('/admin/dashboard', requireAdmin, (_req: AdminRequest, res: Response) => {
+    res.setHeader('Cache-Control', 'no-store');
     try {
       const messages = getContactMessages();
       const unreadCount = messages.filter((m) => !m.isRead).length;

@@ -201,7 +201,6 @@ export default function PublicPortfolio() {
     email: '',
     subject: '',
     message: '',
-    hp_company_ref: '',
   });
   const [submitting, setSubmitting] = useState(false);
   const [submitFeedback, setSubmitFeedback] = useState<{
@@ -403,14 +402,17 @@ export default function PublicPortfolio() {
         email,
         subject,
         message,
-        hp_company_ref: formState.hp_company_ref,
         recipientEmail: settings.contactEmail,
         contactEndpoint: settings.contactEndpoint,
       });
-      setFormState({ name: '', email: '', subject: '', message: '', hp_company_ref: '' });
+      setFormState({ name: '', email: '', subject: '', message: '' });
       setSubmitFeedback({
         type: 'success',
-        text: result.notice || 'Thank you. Your message has been delivered.',
+        text:
+          result.notice ||
+          (result.delivery === 'backend'
+            ? 'Thank you. Your message has been delivered and saved.'
+            : 'Thank you. Your message has been delivered.'),
       });
     } catch (err) {
       setSubmitFeedback({
@@ -983,25 +985,6 @@ export default function PublicPortfolio() {
                   noValidate
                   className="border border-(--border-hairline) bg-(--bg-canvas) p-6 sm:p-8"
                 >
-                  {/* Hidden honeypot field for bot mitigation (autofill-safe name) */}
-                  <div
-                    style={{ position: 'absolute', left: '-9999px', width: '1px', height: '1px', overflow: 'hidden' }}
-                    aria-hidden="true"
-                  >
-                    <label htmlFor="contact-hp-ref">Company Reference</label>
-                    <input
-                      id="contact-hp-ref"
-                      name="hp_company_ref"
-                      type="text"
-                      tabIndex={-1}
-                      autoComplete="new-password"
-                      data-lpignore="true"
-                      data-1p-ignore="true"
-                      value={formState.hp_company_ref}
-                      onChange={(e) => setFormState((s) => ({ ...s, hp_company_ref: e.target.value }))}
-                    />
-                  </div>
-
                   <div className="grid gap-5 sm:grid-cols-2">
                     <div>
                       <label htmlFor="contact-name" className="block text-xs font-medium text-(--text-muted)">

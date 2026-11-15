@@ -29,26 +29,27 @@ const API_BASE =
 export async function fetchPublicPortfolio(): Promise<PublicPortfolioData> {
   const res = await fetch(`${API_BASE}/api/public/portfolio`, {
     method: 'GET',
+    cache: 'no-store',
     headers: { Accept: 'application/json' },
   });
   return parseJson<PublicPortfolioData>(res);
 }
+
+export type ContactDeliveryChannel = 'backend' | 'webhook' | 'email';
 
 export async function submitContactForm(payload: {
   name: string;
   email: string;
   subject: string;
   message: string;
-  hp_company_ref?: string;
   recipientEmail?: string;
   contactEndpoint?: string;
-}): Promise<{ ok: boolean; notice?: string }> {
+}): Promise<{ ok: boolean; delivery: ContactDeliveryChannel; notice?: string }> {
   const {
     name,
     email,
     subject,
     message,
-    hp_company_ref = '',
     recipientEmail = '',
     contactEndpoint = '',
   } = payload;
@@ -62,19 +63,20 @@ export async function submitContactForm(payload: {
         'Content-Type': 'application/json',
         Accept: 'application/json',
       },
-      body: JSON.stringify({ name, email, subject, message, hp_company_ref }),
+      body: JSON.stringify({ name, email, subject, message }),
     });
 
     const contentType = res.headers.get('content-type') || '';
     if (res.ok && contentType.includes('application/json')) {
-      return parseJson<{ ok: boolean }>(res);
+      const data = await parseJson<{ ok: boolean }>(res);
+      return { ok: data.ok, delivery: 'backend' };
     }
 
     // 404/405 or HTML response indicates static hosting (e.g. GitHub Pages) with no Node backend
     if (res.status === 404 || res.status === 405 || !contentType.includes('application/json')) {
       backendUnavailable = true;
     } else {
-      return parseJson<{ ok: boolean }>(res);
+      await parseJson<{ ok: boolean }>(res);
     }
   } catch {
     backendUnavailable = true;
@@ -103,7 +105,11 @@ export async function submitContactForm(payload: {
     if (!extRes.ok) {
       throw new Error('External contact endpoint rejected the submission.');
     }
-    return { ok: true };
+    return {
+      ok: true,
+      delivery: 'webhook',
+      notice: 'Thank you. Your message has been delivered via the configured contact endpoint.',
+    };
   }
 
   // 3. Zero-backend email relay fallback via FormSubmit AJAX for static hosts like GitHub Pages
@@ -136,7 +142,11 @@ export async function submitContactForm(payload: {
   };
 
   if (fsRes.ok && (fsData.success === true || fsData.success === 'true')) {
-    return { ok: true };
+    return {
+      ok: true,
+      delivery: 'email',
+      notice: `Your message has been emailed directly to ${targetEmail}.`,
+    };
   }
 
   if (
@@ -145,6 +155,7 @@ export async function submitContactForm(payload: {
   ) {
     return {
       ok: true,
+      delivery: 'email',
       notice: `A one-time activation email was just sent to ${targetEmail}. Open that email and click "Activate Form" once so future messages deliver automatically.`,
     };
   }
@@ -164,8 +175,9 @@ export interface AdminSessionStatus {
 }
 
 export async function fetchAdminSession(): Promise<AdminSessionStatus> {
-  const res = await fetch('/api/admin/session', {
+  const res = await fetch(`${API_BASE}/api/admin/session`, {
     method: 'GET',
+    cache: 'no-store',
     credentials: 'include',
   });
   return parseJson<AdminSessionStatus>(res);
@@ -176,7 +188,7 @@ export async function adminLogin(
   password: string,
 ): Promise<{ authenticated: boolean; username: string; csrfToken: string }> {
   const embedded = typeof window !== 'undefined' && window.self !== window.top;
-  const res = await fetch('/api/admin/login', {
+  const res = await fetch(`${API_BASE}/api/admin/login`, {
     method: 'POST',
     credentials: 'include',
     headers: { 'Content-Type': 'application/json' },
@@ -186,7 +198,7 @@ export async function adminLogin(
 }
 
 export async function adminLogout(csrfToken: string): Promise<void> {
-  const res = await fetch('/api/admin/logout', {
+  const res = await fetch(`${API_BASE}/api/admin/logout`, {
     method: 'POST',
     credentials: 'include',
     headers: { 'X-CSRF-Token': csrfToken },
@@ -195,8 +207,9 @@ export async function adminLogout(csrfToken: string): Promise<void> {
 }
 
 export async function fetchAdminDashboard(): Promise<AdminDashboardData> {
-  const res = await fetch('/api/admin/dashboard', {
+  const res = await fetch(`${API_BASE}/api/admin/dashboard`, {
     method: 'GET',
+    cache: 'no-store',
     credentials: 'include',
   });
   return parseJson<AdminDashboardData>(res);
